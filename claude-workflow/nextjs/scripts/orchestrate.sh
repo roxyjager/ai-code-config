@@ -20,9 +20,9 @@ SHARED_AGENTS_DIR="${SCRIPT_DIR}/../../agents"
 LOGS_DIR="/tmp/pipeline-logs/$(date +%Y%m%d-%H%M%S)"
 PLAN_FILE="/tmp/plan.json"
 
-# Permission mode: --yes auto-approves all prompts so the pipeline runs unattended
+# Permission mode: bypasses all permission prompts so the pipeline runs unattended
 # Change to "" if you want to approve each action manually
-PERMISSION_FLAG="--yes"
+PERMISSION_FLAG="--dangerously-skip-permissions"
 
 # Colors for output
 RED='\033[0;31m'
@@ -170,10 +170,9 @@ PLAN NUMBERING:
 - Set all phase statuses to \"pending\" with empty execution blocks
 
 Follow the schema defined in the architect prompt." \
-        --allowedTools bash,write,read,edit \
+        --tools "Bash,Edit,Read,Write" \
         ${PERMISSION_FLAG} \
-        --output-file "${LOGS_DIR}/architect.log" \
-        --max-turns 20
+        --max-turns 20 2>&1 | tee "${LOGS_DIR}/architect.log"
 
     if [ ! -f "$PLAN_FILE" ]; then
         # Fallback: check if it went to /tmp/plan.json instead
@@ -288,10 +287,9 @@ Execute ALL phases sequentially through the full pipeline:
 Engineer → Code Review (loop max 3) → UI/UX if frontend (loop max 2) → SDET → Final Review → Validation
 
 Begin now." \
-        --allowedTools bash,write,read,edit,task \
+        --tools "Bash,Edit,Read,Write,Task" \
         ${PERMISSION_FLAG} \
-        --output-file "${LOGS_DIR}/pipeline.log" \
-        --max-turns 100
+        --max-turns 100 2>&1 | tee "${LOGS_DIR}/pipeline.log"
 
     log_ok "Pipeline execution complete"
 }
