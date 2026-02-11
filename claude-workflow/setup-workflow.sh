@@ -80,11 +80,14 @@ fi
 # Create directories
 mkdir -p .claude docs/features docs/categories
 
+# Remove existing symlinks first to prevent nesting loops
+rm -f .claude/shared-agents .claude/agents .claude/scripts .claude/templates
+
 # Symlink shared agents, framework agents, framework scripts, and framework templates
-ln -sf "$WORKFLOW_HOME/agents" .claude/shared-agents
-ln -sf "$WORKFLOW_HOME/$FRAMEWORK/agents" .claude/agents
-ln -sf "$WORKFLOW_HOME/$FRAMEWORK/scripts" .claude/scripts
-ln -sf "$WORKFLOW_HOME/$FRAMEWORK/templates" .claude/templates
+ln -s "$WORKFLOW_HOME/agents" .claude/shared-agents
+ln -s "$WORKFLOW_HOME/$FRAMEWORK/agents" .claude/agents
+ln -s "$WORKFLOW_HOME/$FRAMEWORK/scripts" .claude/scripts
+ln -s "$WORKFLOW_HOME/$FRAMEWORK/templates" .claude/templates
 
 # Copy docs template if INDEX.md doesn't exist yet
 if [ ! -f "docs/INDEX.md" ]; then
