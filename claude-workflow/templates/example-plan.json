@@ -1,0 +1,159 @@
+{
+  "metadata": {
+    "plan_number": 1,
+    "filename": "001-competitor-ad-intelligence-dashboard.json",
+    "created_at": "2026-02-06T14:30:00Z",
+    "feature_request": "Add competitor ad intelligence with Facebook Ad Library scraping and a filterable dashboard",
+    "status": "pending",
+    "started_at": null,
+    "completed_at": null
+  },
+  "feature": "Competitor Ad Intelligence Dashboard",
+  "summary": "Add the ability to track competitor Facebook ads by scraping the Ad Library, storing ad creatives and metadata, and displaying them in a filterable dashboard with performance insights.",
+  "tech_decisions": [
+    "Use Facebook Ad Library API instead of scraping HTML — more reliable and TOS-compliant",
+    "Store ad creatives as S3 URLs, not in the database — keeps DB lean",
+    "Use server-side pagination for the dashboard — competitors may have thousands of ads"
+  ],
+  "phases": [
+    {
+      "id": "1",
+      "name": "Competitor Data Models & Migrations",
+      "description": "Create the database models for competitor tracking. Models needed:\n\n1. `Competitor` model:\n   - id: UUID primary key\n   - name: str (required, max 255)\n   - domain: str (unique, required)\n   - facebook_page_id: str (nullable)\n   - logo_url: str (nullable)\n   - created_at: datetime\n   - updated_at: datetime\n   - Relationship: has_many CompetitorAds\n\n2. `CompetitorAd` model:\n   - id: UUID primary key\n   - competitor_id: FK to Competitor (required)\n   - ad_library_id: str (unique, required)\n   - headline: str (nullable)\n   - body_text: text (nullable)\n   - creative_url: str (nullable)\n   - platform: enum('facebook', 'instagram', 'both')\n   - status: enum('active', 'inactive')\n   - first_seen_at: datetime\n   - last_seen_at: datetime\n   - created_at: datetime\n\nCreate Alembic migration for both models. Add indexes on: Competitor.domain, CompetitorAd.competitor_id, CompetitorAd.status, CompetitorAd.first_seen_at.",
+      "owns": [
+        "models/competitor.py",
+        "models/competitor_ad.py",
+        "migrations/versions/*_add_competitor_models.py"
+      ],
+      "dependencies": [],
+      "estimated_complexity": "low",
+      "has_frontend": false,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "Competitor model exists with all specified fields and types",
+        "CompetitorAd model exists with all specified fields, enums, and FK relationship",
+        "Migration runs successfully on a clean database",
+        "Indexes are created on specified columns",
+        "Models can be imported from models/ package"
+      ],
+      "context": "Follow the existing model pattern in models/campaign.py. Use SQLAlchemy declarative base from models/base.py."
+    },
+    {
+      "id": "2",
+      "name": "Competitor CRUD API Endpoints",
+      "description": "Create REST API endpoints for competitor management:\n\n1. `GET /api/v1/competitors` — List all competitors\n   - Supports: ?page=1&per_page=20&search=name\n   - Returns: paginated list with total count\n   - Response shape: { items: Competitor[], total: int, page: int }\n\n2. `POST /api/v1/competitors` — Create competitor\n   - Body: { name: str, domain: str, facebook_page_id?: str }\n   - Validates: name required, domain unique\n   - Returns: created Competitor object, 201\n\n3. `GET /api/v1/competitors/:id` — Get competitor detail\n   - Includes: ad_count (number of tracked ads)\n   - Returns: Competitor object with ad_count, 200\n   - 404 if not found\n\n4. `DELETE /api/v1/competitors/:id` — Delete competitor\n   - Cascades: deletes associated CompetitorAds\n   - Returns: 204\n\nCreate Pydantic schemas for request validation and response serialization.",
+      "owns": [
+        "api/routes/competitors.py",
+        "api/schemas/competitor.py",
+        "api/routes/__init__.py"
+      ],
+      "dependencies": ["1"],
+      "estimated_complexity": "medium",
+      "has_frontend": false,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "GET /api/v1/competitors returns paginated list with 200",
+        "GET /api/v1/competitors?search=acme filters by name",
+        "POST /api/v1/competitors with valid data returns 201",
+        "POST /api/v1/competitors with duplicate domain returns 409",
+        "POST /api/v1/competitors without name returns 422",
+        "GET /api/v1/competitors/:id returns competitor with ad_count",
+        "GET /api/v1/competitors/:invalid_id returns 404",
+        "DELETE /api/v1/competitors/:id returns 204 and cascades"
+      ],
+      "context": "Follow the existing route pattern in api/routes/campaigns.py. Use the pagination helper from api/utils/pagination.py."
+    },
+    {
+      "id": "3",
+      "name": "Ad Library Scraper Service",
+      "description": "Create a service that fetches competitor ads from the Facebook Ad Library API.\n\n`CompetitorScraperService` class:\n- `async def scrape_competitor(competitor_id: UUID) -> list[CompetitorAd]`\n  - Fetches ads from Ad Library API for the competitor's facebook_page_id\n  - Upserts ads (update if ad_library_id exists, create if new)\n  - Updates last_seen_at for still-active ads\n  - Marks ads as inactive if no longer in Ad Library\n  - Returns list of new/updated ads\n\n- `async def scrape_all() -> dict[UUID, int]`\n  - Iterates all competitors with facebook_page_id set\n  - Calls scrape_competitor for each\n  - Returns dict of competitor_id → ads_updated_count\n\nUse httpx for async HTTP calls. Handle rate limits with exponential backoff. Store Facebook API token in environment variable FB_AD_LIBRARY_TOKEN.",
+      "owns": [
+        "services/competitor_scraper.py",
+        "services/__init__.py"
+      ],
+      "dependencies": ["1"],
+      "estimated_complexity": "high",
+      "has_frontend": false,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "scrape_competitor fetches ads from Ad Library API",
+        "New ads are created in the database",
+        "Existing ads are updated (last_seen_at)",
+        "Missing ads are marked inactive",
+        "Rate limiting is handled with exponential backoff",
+        "API token is read from environment, not hardcoded",
+        "scrape_all processes all competitors and returns counts"
+      ],
+      "context": "Use the existing httpx client pattern from services/meta_api.py. Use the environment variable pattern from config/settings.py."
+    },
+    {
+      "id": "4",
+      "name": "Competitor Dashboard UI",
+      "description": "Create the competitor dashboard page with the following components:\n\n1. `CompetitorListPage` — Main page at /competitors\n   - Header with title 'Competitor Intelligence' and 'Add Competitor' button\n   - Search bar to filter competitors by name\n   - Grid/list of CompetitorCard components\n   - Pagination controls\n   - Empty state when no competitors exist\n\n2. `CompetitorCard` component\n   - Shows: competitor name, domain, logo (or placeholder), ad count\n   - Click navigates to competitor detail page\n   - Hover state with subtle elevation\n\n3. `AddCompetitorModal` component\n   - Form fields: name (required), domain (required), facebook_page_id (optional)\n   - Validation: show inline errors\n   - Submit calls POST /api/v1/competitors\n   - Success: closes modal, refreshes list\n   - Error: shows API error message\n\n4. `CompetitorDetailPage` — Page at /competitors/:id\n   - Competitor info header (name, domain, ad count)\n   - Grid of CompetitorAdCard components\n   - Filters: status (active/inactive), platform (facebook/instagram/both)\n   - Pagination\n\n5. `CompetitorAdCard` component\n   - Shows: ad creative thumbnail, headline, platform badge, status badge\n   - First seen / last seen dates\n   - Click to expand full ad details\n\nUse existing component library patterns. All components must handle loading and error states.",
+      "owns": [
+        "frontend/src/pages/CompetitorListPage.tsx",
+        "frontend/src/pages/CompetitorDetailPage.tsx",
+        "frontend/src/components/competitors/CompetitorCard.tsx",
+        "frontend/src/components/competitors/CompetitorAdCard.tsx",
+        "frontend/src/components/competitors/AddCompetitorModal.tsx",
+        "frontend/src/hooks/useCompetitors.ts",
+        "frontend/src/api/competitors.ts"
+      ],
+      "dependencies": ["2"],
+      "estimated_complexity": "high",
+      "has_frontend": true,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "CompetitorListPage renders at /competitors with header and search",
+        "CompetitorCard shows name, domain, and ad count",
+        "AddCompetitorModal validates required fields and submits",
+        "CompetitorDetailPage shows competitor info and ad grid",
+        "CompetitorAdCard shows creative thumbnail, headline, and badges",
+        "All components show loading skeletons while fetching",
+        "All components show error messages on API failure",
+        "Empty state is shown when no competitors/ads exist",
+        "Pagination works on both pages",
+        "Filters work on the detail page"
+      ],
+      "context": "Follow the existing page pattern in frontend/src/pages/CampaignListPage.tsx. Use the component library from frontend/src/components/ui/. Use React Query for data fetching following the pattern in frontend/src/hooks/useCampaigns.ts."
+    }
+  ],
+  "shared_context": "EXOD.ai is a FastAPI + React TypeScript application. Backend uses SQLAlchemy with PostgreSQL, Pydantic for schemas, and follows a standard service/route/model pattern. Frontend uses React Query, TailwindCSS, and a custom component library. Existing patterns can be found in the campaigns module which has a similar structure.",
+  "test_strategy": "Unit tests for all service methods (mock the database and external APIs). Integration tests for API endpoints using pytest with a test database. Component tests for all React components using Testing Library. Mock the API layer in frontend tests. Focus on testing the scraper's edge cases (rate limits, missing data, API errors) thoroughly."
+}
