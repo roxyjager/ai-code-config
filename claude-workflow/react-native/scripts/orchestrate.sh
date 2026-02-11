@@ -147,7 +147,8 @@ get_next_plan_number() {
 }
 
 slugify() {
-    echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//' | cut -c1-50
+    # Take only the first line, strip markdown heading prefix, then slugify
+    echo "$1" | head -1 | sed 's/^#* *//' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//' | cut -c1-50
 }
 
 run_architect() {
@@ -192,7 +193,7 @@ PLAN NUMBERING:
 Follow the schema defined in the architect prompt." \
         --tools "Bash,Edit,Read,Write" \
         ${PERMISSION_FLAG} \
-        --max-turns 20 2>&1 | tee "${LOGS_DIR}/architect.log"
+        --max-budget-usd 5 2>&1 | tee "${LOGS_DIR}/architect.log"
 
     if [ ! -f "$PLAN_FILE" ]; then
         # Fallback: check if it went to /tmp/plan.json instead
@@ -309,7 +310,7 @@ Engineer → Code Review (loop max 3) → UI/UX if frontend (loop max 2) → SDE
 Begin now." \
         --tools "Bash,Edit,Read,Write,Task" \
         ${PERMISSION_FLAG} \
-        --max-turns 100 2>&1 | tee "${LOGS_DIR}/pipeline.log"
+        --max-budget-usd 20 2>&1 | tee "${LOGS_DIR}/pipeline.log"
 
     log_ok "Pipeline execution complete"
 }
