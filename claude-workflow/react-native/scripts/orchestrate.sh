@@ -142,7 +142,7 @@ HEADER
 get_next_plan_number() {
     mkdir -p plans
     local last
-    last=$(ls plans/[0-9]*.json 2>/dev/null | sort -V | tail -1 | grep -oP '^\d+' || echo "0")
+    last=$(ls plans/[0-9]*.json 2>/dev/null | sort -V | tail -1 | sed 's|plans/||' | grep -oE '^[0-9]+' || echo "0")
     printf "%03d" $(( ${last:-0} + 1 ))
 }
 

@@ -54,7 +54,7 @@ Each phase must be small enough to be implemented and reviewed in one pass. Orde
 ```bash
 # Example: determine next plan number and generate filename
 mkdir -p plans
-LAST=$(ls plans/[0-9]*.json 2>/dev/null | sort -V | tail -1 | grep -oP '^\d+' || echo "0")
+LAST=$(ls plans/[0-9]*.json 2>/dev/null | sort -V | tail -1 | sed 's|plans/||' | grep -oE '^[0-9]+' || echo "0")
 NEXT=$(printf "%03d" $(( ${LAST:-0} + 1 )))
 SLUG=$(echo "Competitor Ad Intelligence" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//' | cut -c1-50)
 # Save as plans/${NEXT}-${SLUG}.json AND /tmp/plan.json
