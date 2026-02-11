@@ -70,7 +70,7 @@ HEADER
         -not -path '*/node_modules/*' \
         -not -path '*/.next/*' \
         -exec echo "// === {} ===" \; \
-        -exec cat {} \; 2>/dev/null | head -500 >> "$snapshot"
+        -exec cat {} \; 2>/dev/null | head -500 >> "$snapshot" || true
     echo '```' >> "$snapshot"
 
     # API routes
@@ -92,7 +92,7 @@ HEADER
     grep -r "export interface\|export type\|export enum" \
         --include="*.ts" --include="*.tsx" \
         --exclude-dir=node_modules --exclude-dir=.next \
-        . 2>/dev/null | head -100 >> "$snapshot"
+        . 2>/dev/null | head -100 >> "$snapshot" || true
     echo '```' >> "$snapshot"
 
     # Component inventory
@@ -345,9 +345,15 @@ main() {
     mkdir -p "$LOGS_DIR"
     log_info "Logs directory: ${LOGS_DIR}"
 
-    # Check for claude CLI
-    if ! command -v claude &> /dev/null; then
-        log_error "Claude Code CLI not found. Install it first."
+    # Check required dependencies
+    local missing=()
+    command -v claude &> /dev/null || missing+=("claude (Claude Code CLI)")
+    command -v jq &> /dev/null || missing+=("jq (brew install jq)")
+    if [ ${#missing[@]} -gt 0 ]; then
+        log_error "Missing required dependencies:"
+        for dep in "${missing[@]}"; do
+            echo "  - $dep"
+        done
         exit 1
     fi
 
