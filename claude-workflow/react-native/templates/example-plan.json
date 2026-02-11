@@ -1,0 +1,157 @@
+{
+  "metadata": {
+    "plan_number": 1,
+    "filename": "001-competitor-ad-intelligence-dashboard.json",
+    "created_at": "2026-02-06T14:30:00Z",
+    "feature_request": "Add competitor ad intelligence with Facebook Ad Library integration and a filterable dashboard",
+    "status": "pending",
+    "started_at": null,
+    "completed_at": null
+  },
+  "feature": "Competitor Ad Intelligence Dashboard",
+  "summary": "Add the ability to track competitor Facebook ads by integrating with the Ad Library API, storing ad creatives and metadata, and displaying them in a filterable scrollable list with performance insights.",
+  "tech_decisions": [
+    "Use Facebook Ad Library API instead of scraping HTML — more reliable and TOS-compliant",
+    "Store ad creatives as S3 URLs, not locally — keeps app storage lean",
+    "Use cursor-based pagination for the list — better performance on mobile with large datasets"
+  ],
+  "phases": [
+    {
+      "id": "1",
+      "name": "Competitor Data Types & API Client",
+      "description": "Create TypeScript types and API client for competitor tracking.\n\n1. `Competitor` type:\n   - id: string\n   - name: string\n   - domain: string\n   - facebookPageId: string | null\n   - logoUrl: string | null\n   - adCount: number\n   - createdAt: string (ISO date)\n   - updatedAt: string (ISO date)\n\n2. `CompetitorAd` type:\n   - id: string\n   - competitorId: string\n   - adLibraryId: string\n   - headline: string | null\n   - bodyText: string | null\n   - creativeUrl: string | null\n   - platform: 'facebook' | 'instagram' | 'both'\n   - status: 'active' | 'inactive'\n   - firstSeenAt: string (ISO date)\n   - lastSeenAt: string (ISO date)\n\n3. API client functions:\n   - getCompetitors(params: { page?: number, limit?: number, search?: string })\n   - getCompetitor(id: string)\n   - createCompetitor(data: CreateCompetitorInput)\n   - deleteCompetitor(id: string)\n   - getCompetitorAds(competitorId: string, params: { page?: number, status?: string, platform?: string })",
+      "owns": [
+        "src/types/competitor.ts",
+        "src/api/competitors.ts"
+      ],
+      "dependencies": [],
+      "estimated_complexity": "low",
+      "has_frontend": false,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "Competitor and CompetitorAd types are defined and exported",
+        "API client functions call correct endpoints with proper typing",
+        "API client handles error responses consistently",
+        "Types match the backend API response shapes"
+      ],
+      "context": "Follow the existing type patterns in src/types/. Use the API client pattern from src/api/client.ts with the base URL from environment config."
+    },
+    {
+      "id": "2",
+      "name": "Competitor List Screen",
+      "description": "Create the competitor list screen with the following:\n\n1. `CompetitorListScreen` — Screen in the competitors stack\n   - Header with title 'Competitor Intelligence' and add button\n   - Search bar to filter competitors by name\n   - FlatList of CompetitorCard components with pull-to-refresh\n   - Pagination via onEndReached\n   - Empty state when no competitors exist\n\n2. `CompetitorCard` component\n   - Shows: competitor name, domain, logo (or placeholder avatar), ad count badge\n   - Press navigates to competitor detail screen\n   - Pressable with subtle scale animation\n\n3. `AddCompetitorSheet` component (bottom sheet)\n   - Form fields: name (required), domain (required), facebookPageId (optional)\n   - Validation: show inline errors\n   - Submit calls createCompetitor API\n   - Success: closes sheet, refreshes list\n   - Error: shows error toast\n\nAll components must handle loading and error states.",
+      "owns": [
+        "src/screens/competitors/CompetitorListScreen.tsx",
+        "src/components/competitors/CompetitorCard.tsx",
+        "src/components/competitors/AddCompetitorSheet.tsx",
+        "src/hooks/useCompetitors.ts"
+      ],
+      "dependencies": ["1"],
+      "estimated_complexity": "high",
+      "has_frontend": true,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "CompetitorListScreen renders with header, search bar, and list",
+        "CompetitorCard shows name, domain, and ad count",
+        "Search filters the list by competitor name",
+        "Pull-to-refresh reloads the list",
+        "Infinite scroll loads more competitors",
+        "AddCompetitorSheet validates required fields",
+        "Successful creation refreshes the list and closes sheet",
+        "Loading skeleton shown while fetching",
+        "Error state shown on API failure",
+        "Empty state shown when no competitors exist"
+      ],
+      "context": "Follow the existing screen pattern in src/screens/. Use the component library from src/components/ui/. Use React Query for data fetching following the pattern in src/hooks/."
+    },
+    {
+      "id": "3",
+      "name": "Competitor Detail Screen",
+      "description": "Create the competitor detail screen:\n\n1. `CompetitorDetailScreen` — Screen at competitors/:id\n   - Competitor info header (name, domain, ad count)\n   - Filter chips: status (active/inactive), platform (facebook/instagram/both)\n   - FlatList of CompetitorAdCard components with pull-to-refresh\n   - Pagination via onEndReached\n\n2. `CompetitorAdCard` component\n   - Shows: ad creative thumbnail (Image with fallback), headline, platform badge, status badge\n   - First seen / last seen dates formatted relative (e.g. '3 days ago')\n   - Press to expand full ad details in a bottom sheet or modal\n\n3. `CompetitorAdDetailSheet` component\n   - Full ad creative image\n   - Complete body text\n   - All metadata fields\n   - Share button\n\nAll components must handle loading and error states. Images must have proper fallbacks.",
+      "owns": [
+        "src/screens/competitors/CompetitorDetailScreen.tsx",
+        "src/components/competitors/CompetitorAdCard.tsx",
+        "src/components/competitors/CompetitorAdDetailSheet.tsx",
+        "src/hooks/useCompetitorAds.ts"
+      ],
+      "dependencies": ["1", "2"],
+      "estimated_complexity": "high",
+      "has_frontend": true,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "CompetitorDetailScreen shows competitor info and ad list",
+        "Filter chips filter ads by status and platform",
+        "CompetitorAdCard shows thumbnail, headline, and badges",
+        "Dates are formatted as relative time",
+        "Pull-to-refresh reloads the ad list",
+        "Infinite scroll loads more ads",
+        "CompetitorAdDetailSheet shows full ad details",
+        "Image fallbacks display correctly when creativeUrl is null",
+        "Loading skeleton shown while fetching",
+        "Error state shown on API failure"
+      ],
+      "context": "Follow the existing screen pattern in src/screens/. Use React Navigation for screen params. Use the image component pattern from src/components/ui/."
+    },
+    {
+      "id": "4",
+      "name": "Navigation & Stack Integration",
+      "description": "Integrate competitor screens into the app navigation:\n\n1. Create `CompetitorStack` navigator:\n   - CompetitorList → CompetitorDetail\n   - Proper typing for route params\n\n2. Add to main tab navigator:\n   - New 'Competitors' tab with appropriate icon\n   - Tab positioned after existing tabs\n\n3. Deep linking:\n   - /competitors → CompetitorListScreen\n   - /competitors/:id → CompetitorDetailScreen",
+      "owns": [
+        "src/navigation/CompetitorStack.tsx",
+        "src/navigation/MainTabs.tsx",
+        "src/navigation/types.ts"
+      ],
+      "dependencies": ["2", "3"],
+      "estimated_complexity": "low",
+      "has_frontend": true,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "CompetitorStack navigator is created with proper screen types",
+        "Competitors tab appears in main tab navigator",
+        "Navigation from list to detail works with correct params",
+        "Back navigation works correctly",
+        "Deep links resolve to correct screens",
+        "Route param types are fully typed"
+      ],
+      "context": "Follow the existing stack pattern in src/navigation/. Use React Navigation v6+ conventions. Add route param types to the shared navigation types file."
+    }
+  ],
+  "shared_context": "React Native application with Expo and TypeScript. Uses React Navigation for routing, React Query for data fetching, and a custom component library. Backend API is separate — the mobile app consumes REST endpoints. Existing patterns can be found in the campaigns module which has a similar structure.",
+  "test_strategy": "Unit tests for API client functions (mock fetch). Component tests for all screens and components using React Native Testing Library. Mock the API layer and navigation in tests. Test FlatList rendering with mock data. Focus on testing loading, error, and empty states for all screens."
+}

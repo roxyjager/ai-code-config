@@ -51,15 +51,18 @@ claude-workflow/
       ui-ux-specialist.md
     scripts/
       orchestrate.sh
+    templates/
+      docs/
+      example-plan.json
   react-native/                    ← REACT NATIVE SPECIFIC
     agents/
       senior-engineer.md
       ui-ux-specialist.md
     scripts/
       orchestrate.sh
-  templates/                       ← SHARED
-    docs/                          ← Starter templates for project docs
-    example-plan.json
+    templates/
+      docs/
+      example-plan.json
   setup-workflow.sh                ← Setup script (accepts framework flag)
 ```
 
@@ -206,7 +209,7 @@ your-project/
     shared-agents/ → ~/ai-code-config/claude-workflow/agents/           (symlink)
     agents/        → ~/ai-code-config/claude-workflow/{framework}/agents/ (symlink)
     scripts/       → ~/ai-code-config/claude-workflow/{framework}/scripts/ (symlink)
-    templates/     → ~/ai-code-config/claude-workflow/templates/          (symlink)
+    templates/     → ~/ai-code-config/claude-workflow/{framework}/templates/ (symlink)
   docs/
     INDEX.md           ← auto-generated feature index
     features/          ← one file per completed plan

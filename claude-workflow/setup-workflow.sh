@@ -71,18 +71,24 @@ for agent in senior-engineer ui-ux-specialist; do
     fi
 done
 
+# Verify framework templates exist
+if [ ! -d "$WORKFLOW_HOME/$FRAMEWORK/templates" ]; then
+    echo -e "${RED}Error: Missing $WORKFLOW_HOME/$FRAMEWORK/templates${NC}"
+    exit 1
+fi
+
 # Create directories
 mkdir -p .claude docs/features docs/categories
 
-# Symlink shared agents, framework agents, framework scripts, and templates
+# Symlink shared agents, framework agents, framework scripts, and framework templates
 ln -sf "$WORKFLOW_HOME/agents" .claude/shared-agents
 ln -sf "$WORKFLOW_HOME/$FRAMEWORK/agents" .claude/agents
 ln -sf "$WORKFLOW_HOME/$FRAMEWORK/scripts" .claude/scripts
-ln -sf "$WORKFLOW_HOME/templates" .claude/templates
+ln -sf "$WORKFLOW_HOME/$FRAMEWORK/templates" .claude/templates
 
 # Copy docs template if INDEX.md doesn't exist yet
 if [ ! -f "docs/INDEX.md" ]; then
-    cp "$WORKFLOW_HOME/templates/docs/INDEX.md" docs/INDEX.md
+    cp "$WORKFLOW_HOME/$FRAMEWORK/templates/docs/INDEX.md" docs/INDEX.md
     echo -e "${GREEN}✅ Created docs/INDEX.md from template${NC}"
 fi
 
@@ -93,7 +99,7 @@ echo "  Symlinks:"
 echo "    .claude/shared-agents/ → $WORKFLOW_HOME/agents/"
 echo "    .claude/agents/        → $WORKFLOW_HOME/$FRAMEWORK/agents/"
 echo "    .claude/scripts/       → $WORKFLOW_HOME/$FRAMEWORK/scripts/"
-echo "    .claude/templates/     → $WORKFLOW_HOME/templates/"
+echo "    .claude/templates/     → $WORKFLOW_HOME/$FRAMEWORK/templates/"
 echo ""
 echo "  Project-specific (not symlinked):"
 echo "    docs/INDEX.md         — auto-generated feature index"

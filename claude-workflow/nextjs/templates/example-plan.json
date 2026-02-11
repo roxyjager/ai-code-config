@@ -1,0 +1,157 @@
+{
+  "metadata": {
+    "plan_number": 1,
+    "filename": "001-competitor-ad-intelligence-dashboard.json",
+    "created_at": "2026-02-06T14:30:00Z",
+    "feature_request": "Add competitor ad intelligence with Facebook Ad Library integration and a filterable dashboard",
+    "status": "pending",
+    "started_at": null,
+    "completed_at": null
+  },
+  "feature": "Competitor Ad Intelligence Dashboard",
+  "summary": "Add the ability to track competitor Facebook ads by integrating with the Ad Library API, storing ad creatives and metadata, and displaying them in a filterable dashboard with performance insights.",
+  "tech_decisions": [
+    "Use Facebook Ad Library API instead of scraping HTML — more reliable and TOS-compliant",
+    "Store ad creatives as S3 URLs, not in the database — keeps DB lean",
+    "Use server-side pagination for the dashboard — competitors may have thousands of ads"
+  ],
+  "phases": [
+    {
+      "id": "1",
+      "name": "Competitor Data Models & Migrations",
+      "description": "Create the Prisma models for competitor tracking.\n\n1. `Competitor` model:\n   - id: String @id @default(cuid())\n   - name: String (required, max 255)\n   - domain: String @unique\n   - facebookPageId: String? (nullable)\n   - logoUrl: String? (nullable)\n   - createdAt: DateTime @default(now())\n   - updatedAt: DateTime @updatedAt\n   - Relation: ads CompetitorAd[]\n\n2. `CompetitorAd` model:\n   - id: String @id @default(cuid())\n   - competitorId: String (FK to Competitor, required)\n   - adLibraryId: String @unique\n   - headline: String? (nullable)\n   - bodyText: String? (nullable)\n   - creativeUrl: String? (nullable)\n   - platform: Platform enum (FACEBOOK, INSTAGRAM, BOTH)\n   - status: AdStatus enum (ACTIVE, INACTIVE)\n   - firstSeenAt: DateTime\n   - lastSeenAt: DateTime\n   - createdAt: DateTime @default(now())\n   - Relation: competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)\n\nCreate and run Prisma migration. Add indexes on: Competitor.domain, CompetitorAd.competitorId, CompetitorAd.status, CompetitorAd.firstSeenAt.",
+      "owns": [
+        "prisma/schema.prisma",
+        "prisma/migrations/*_add_competitor_models/"
+      ],
+      "dependencies": [],
+      "estimated_complexity": "low",
+      "has_frontend": false,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "Competitor model exists in Prisma schema with all specified fields and types",
+        "CompetitorAd model exists with all specified fields, enums, and relation",
+        "Migration runs successfully on a clean database",
+        "Indexes are created on specified columns",
+        "Prisma client generates types for both models"
+      ],
+      "context": "Follow the existing model patterns in prisma/schema.prisma. Use the same cuid() ID pattern and @updatedAt convention as existing models."
+    },
+    {
+      "id": "2",
+      "name": "Competitor CRUD API Routes",
+      "description": "Create Next.js API route handlers for competitor management:\n\n1. `GET /api/competitors` — List all competitors\n   - Supports: ?page=1&limit=20&search=name\n   - Returns: paginated list with total count\n   - Response shape: { items: Competitor[], total: number, page: number }\n\n2. `POST /api/competitors` — Create competitor\n   - Body: { name: string, domain: string, facebookPageId?: string }\n   - Validates: name required, domain unique\n   - Returns: created Competitor object, 201\n\n3. `GET /api/competitors/[id]` — Get competitor detail\n   - Includes: _count of tracked ads\n   - Returns: Competitor object with adCount, 200\n   - 404 if not found\n\n4. `DELETE /api/competitors/[id]` — Delete competitor\n   - Cascades: deletes associated CompetitorAds via Prisma onDelete\n   - Returns: 204\n\nUse Zod for request validation.",
+      "owns": [
+        "src/app/api/competitors/route.ts",
+        "src/app/api/competitors/[id]/route.ts",
+        "src/lib/validations/competitor.ts"
+      ],
+      "dependencies": ["1"],
+      "estimated_complexity": "medium",
+      "has_frontend": false,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "GET /api/competitors returns paginated list with 200",
+        "GET /api/competitors?search=acme filters by name",
+        "POST /api/competitors with valid data returns 201",
+        "POST /api/competitors with duplicate domain returns 409",
+        "POST /api/competitors without name returns 422",
+        "GET /api/competitors/:id returns competitor with adCount",
+        "GET /api/competitors/:invalid_id returns 404",
+        "DELETE /api/competitors/:id returns 204 and cascades"
+      ],
+      "context": "Follow the existing API route pattern in src/app/api/. Use the Prisma client from src/lib/prisma.ts. Use Zod schemas following the pattern in src/lib/validations/."
+    },
+    {
+      "id": "3",
+      "name": "Ad Library Integration Service",
+      "description": "Create a service that fetches competitor ads from the Facebook Ad Library API.\n\n`CompetitorScraperService` class in src/lib/services/:\n- `async scrapeCompetitor(competitorId: string): Promise<CompetitorAd[]>`\n  - Fetches ads from Ad Library API for the competitor's facebookPageId\n  - Upserts ads (update if adLibraryId exists, create if new)\n  - Updates lastSeenAt for still-active ads\n  - Marks ads as INACTIVE if no longer in Ad Library\n  - Returns list of new/updated ads\n\n- `async scrapeAll(): Promise<Record<string, number>>`\n  - Iterates all competitors with facebookPageId set\n  - Calls scrapeCompetitor for each\n  - Returns map of competitorId → adsUpdatedCount\n\nUse fetch for HTTP calls. Handle rate limits with exponential backoff. Store Facebook API token in environment variable FB_AD_LIBRARY_TOKEN.",
+      "owns": [
+        "src/lib/services/competitor-scraper.ts"
+      ],
+      "dependencies": ["1"],
+      "estimated_complexity": "high",
+      "has_frontend": false,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "scrapeCompetitor fetches ads from Ad Library API",
+        "New ads are created in the database via Prisma",
+        "Existing ads are updated (lastSeenAt)",
+        "Missing ads are marked INACTIVE",
+        "Rate limiting is handled with exponential backoff",
+        "API token is read from environment, not hardcoded",
+        "scrapeAll processes all competitors and returns counts"
+      ],
+      "context": "Use the existing Prisma client from src/lib/prisma.ts. Follow the service pattern in src/lib/services/. Use environment variables from process.env."
+    },
+    {
+      "id": "4",
+      "name": "Competitor Dashboard UI",
+      "description": "Create the competitor dashboard pages with the following components:\n\n1. `CompetitorListPage` — Page at /competitors\n   - Header with title 'Competitor Intelligence' and 'Add Competitor' button\n   - Search bar to filter competitors by name\n   - Grid/list of CompetitorCard components\n   - Pagination controls\n   - Empty state when no competitors exist\n\n2. `CompetitorCard` component\n   - Shows: competitor name, domain, logo (or placeholder), ad count\n   - Click navigates to competitor detail page\n   - Hover state with subtle elevation\n\n3. `AddCompetitorModal` component\n   - Form fields: name (required), domain (required), facebookPageId (optional)\n   - Validation: show inline errors using Zod\n   - Submit calls POST /api/competitors\n   - Success: closes modal, refreshes list\n   - Error: shows API error message\n\n4. `CompetitorDetailPage` — Page at /competitors/[id]\n   - Competitor info header (name, domain, ad count)\n   - Grid of CompetitorAdCard components\n   - Filters: status (ACTIVE/INACTIVE), platform (FACEBOOK/INSTAGRAM/BOTH)\n   - Pagination\n\n5. `CompetitorAdCard` component\n   - Shows: ad creative thumbnail, headline, platform badge, status badge\n   - First seen / last seen dates\n   - Click to expand full ad details\n\nUse existing component library patterns. All components must handle loading and error states.",
+      "owns": [
+        "src/app/competitors/page.tsx",
+        "src/app/competitors/[id]/page.tsx",
+        "src/components/competitors/competitor-card.tsx",
+        "src/components/competitors/competitor-ad-card.tsx",
+        "src/components/competitors/add-competitor-modal.tsx",
+        "src/hooks/use-competitors.ts",
+        "src/lib/api/competitors.ts"
+      ],
+      "dependencies": ["2"],
+      "estimated_complexity": "high",
+      "has_frontend": true,
+      "status": "pending",
+      "execution": {
+        "started_at": null,
+        "completed_at": null,
+        "review_cycles": 0,
+        "ui_review_cycles": 0,
+        "tests_written": 0,
+        "escalated": false,
+        "notes": []
+      },
+      "acceptance_criteria": [
+        "CompetitorListPage renders at /competitors with header and search",
+        "CompetitorCard shows name, domain, and ad count",
+        "AddCompetitorModal validates required fields and submits",
+        "CompetitorDetailPage shows competitor info and ad grid",
+        "CompetitorAdCard shows creative thumbnail, headline, and badges",
+        "All components show loading skeletons while fetching",
+        "All components show error messages on API failure",
+        "Empty state is shown when no competitors/ads exist",
+        "Pagination works on both pages",
+        "Filters work on the detail page"
+      ],
+      "context": "Follow the existing page pattern in src/app/. Use the component library from src/components/ui/. Use React Query or SWR for data fetching following the pattern in src/hooks/."
+    }
+  ],
+  "shared_context": "Next.js App Router application with TypeScript. Backend uses Prisma with PostgreSQL, Zod for validation, and follows App Router API route conventions. Frontend uses React Query or SWR, TailwindCSS, and a component library (e.g. shadcn/ui). Existing patterns can be found in the campaigns module which has a similar structure.",
+  "test_strategy": "Unit tests for all service methods (mock Prisma client and external APIs). Integration tests for API routes using Next.js test helpers. Component tests for all React components using Testing Library. Mock the API layer in frontend tests. Focus on testing the scraper's edge cases (rate limits, missing data, API errors) thoroughly."
+}
