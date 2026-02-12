@@ -201,6 +201,15 @@ For small, straightforward features where you trust the architect to get it righ
 
 Completed phases are skipped. Picks up from where it left off.
 
+## Recommended: Run via Claude Code
+
+Instead of running the orchestrate script directly from your terminal, tell Claude Code to run it:
+
+> Run .claude/scripts/orchestrate.sh --plan plans/001-my-feature.json
+> Monitor progress and fix any issues.
+
+This lets Claude Code catch and fix errors autonomously.
+
 ## Per-Project Structure After Setup
 
 ```

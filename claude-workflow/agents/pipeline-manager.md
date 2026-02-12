@@ -223,27 +223,62 @@ Before moving to the next phase, verify:
 - No files outside ownership were modified
 
 **If validation fails:** Attempt one fix cycle, then ESCALATE if still failing.
-**If validation passes:** Log phase as complete, move to next phase.
+**If validation passes:** Log phase as complete, continue to auto-commit.
 
-### Step 2: Cross-Phase Integration Check
-After ALL phases are complete, run one final integration review:
+#### 1h. Auto-Commit Phase
+After the phase passes all validation, stage and commit all changes:
+
+```bash
+# Derive slug from plan filename (e.g., 001-import-facebook-campaigns.json → import-facebook-campaigns)
+PLAN_SLUG=$(basename "$PLAN_FILE" .json | sed 's/^[0-9]*-//')
+git add -A
+git commit -m "feat(${PLAN_SLUG}): Phase {N} - {phase name}"
+```
+
+Example: `feat(import-facebook-campaigns): Phase 3 - Import Domain Module`
+
+This preserves each phase's work as a discrete commit before moving to the next phase.
+
+### Step 2: Full-Feature Review
+After ALL phases are complete, run a comprehensive holistic review of the entire feature. This catches cross-phase issues that per-phase reviews miss.
+
+#### 2a. Cross-Phase Code Review
+Spawn a Task with the code-reviewer agent, reviewing ALL files changed across ALL phases:
 ```
 Read the agent prompt at agents/code-reviewer.md.
 
-INTEGRATION REVIEW — All phases complete for: {feature}
+FULL-FEATURE REVIEW — All phases complete for: {feature}
 
-Review the full feature for integration issues:
-1. Do all phases connect correctly?
-2. Are imports and dependencies resolved?
-3. Are there any conflicts between phases?
-4. Does the feature work as a whole?
+Review the ENTIRE feature scope (all files changed across all phases) for:
+1. Cross-phase consistency — naming, patterns, conventions
+2. Missing imports or broken dependencies between phases
+3. Integration gaps between API routes and frontend
+4. Issues that per-phase reviews may have missed
+5. Overall architecture coherence
 
 PLAN:
 {full plan summary}
 
 PHASE COMPLETION REPORTS:
 {all phase reports}
+
+ALL FILES CHANGED:
+{complete list of files created or modified across all phases}
 ```
+
+#### 2b. Full TypeScript Compilation & Test Suite
+After the cross-phase review, run full compilation and tests:
+```bash
+npx tsc --noEmit 2>&1 | tee /tmp/full-feature-typecheck.log
+npm test -- --watchAll=false 2>&1 | tee /tmp/full-feature-tests.log
+```
+
+#### 2c. Fix Loop (if issues found)
+If the cross-phase review returns NEEDS_CHANGES, TypeScript fails, or tests fail:
+1. Spawn the senior-engineer agent with the specific issues to fix
+2. Re-run the code review, TypeScript check, and test suite
+3. Maximum 2 fix cycles. If still failing after 2 cycles, ESCALATE.
+4. Commit fixes: `feat({plan-slug}): Full-feature review fixes`
 
 ### Step 3: Production Build Verification
 After the integration review, attempt a full production build to catch any compilation, bundling, or dependency issues that per-phase checks might miss.

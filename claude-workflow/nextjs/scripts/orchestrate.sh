@@ -131,6 +131,27 @@ slugify() {
     echo "$1" | head -1 | sed 's/^#* *//' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//' | cut -c1-50
 }
 
+# ============================================================================
+# Git: Feature Branch Management
+# ============================================================================
+get_plan_slug() {
+    basename "$1" .json
+}
+
+create_or_checkout_feature_branch() {
+    local slug
+    slug=$(get_plan_slug "$1")
+    local branch="feature/${slug}"
+
+    if git rev-parse --verify "$branch" &>/dev/null; then
+        log_info "Feature branch exists, checking out: ${branch}"
+        git checkout "$branch"
+    else
+        log_info "Creating feature branch: ${branch}"
+        git checkout -b "$branch"
+    fi
+}
+
 run_architect() {
     local feature_desc="$1"
     local next_num
@@ -173,7 +194,7 @@ PLAN NUMBERING:
 Follow the schema defined in the architect prompt." \
         --tools "Bash,Edit,Read,Write" \
         ${PERMISSION_FLAG} \
-        --max-budget-usd 5 2>&1 | tee "${LOGS_DIR}/architect.log"
+        2>&1 | tee "${LOGS_DIR}/architect.log"
 
     if [ ! -f "$PLAN_FILE" ]; then
         # Fallback: check if it went to /tmp/plan.json instead
@@ -254,7 +275,17 @@ run_pipeline() {
     local resume_flag="${1:-false}"
     local resume_instruction=""
 
+    # Create or checkout the feature branch for this plan
+    create_or_checkout_feature_branch "$PLAN_FILE"
+
     if [ "$resume_flag" = "true" ]; then
+        # Discard uncommitted partial work from an interrupted phase
+        local current_branch
+        current_branch=$(git branch --show-current)
+        if [ "$current_branch" != "main" ] && [ "$current_branch" != "master" ]; then
+            log_warn "Resetting uncommitted changes from interrupted phase"
+            git reset --hard
+        fi
         resume_instruction="RESUME MODE: This plan was previously interrupted. Check metadata.status and each phase's status. Skip any phase with status 'completed'. Resume from the first phase that is NOT 'completed'."
         log_step "Resuming Pipeline Manager Agent..."
     else
@@ -290,7 +321,7 @@ Engineer → Code Review (loop max 3) → UI/UX if frontend (loop max 2) → SDE
 Begin now." \
         --tools "Bash,Edit,Read,Write,Task" \
         ${PERMISSION_FLAG} \
-        --max-budget-usd 20 2>&1 | tee "${LOGS_DIR}/pipeline.log"
+        2>&1 | tee "${LOGS_DIR}/pipeline.log" || true
 
     log_ok "Pipeline execution complete"
 }
