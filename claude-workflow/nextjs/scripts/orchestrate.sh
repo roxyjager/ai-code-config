@@ -327,6 +327,77 @@ Begin now." \
 }
 
 # ============================================================================
+# Post-Pipeline: Verify & enforce feature documentation
+# ============================================================================
+verify_and_create_docs() {
+    local plan_file="$1"
+
+    if [ ! -f "$plan_file" ]; then
+        log_warn "Plan file not found for doc verification: ${plan_file}"
+        return
+    fi
+
+    # Extract plan number and slug from filename (e.g., 003-feature-slug.json)
+    local plan_basename
+    plan_basename=$(basename "$plan_file" .json)
+    local plan_number
+    plan_number=$(echo "$plan_basename" | grep -oE '^[0-9]+')
+
+    # Derive the expected feature doc path
+    local feature_doc="docs/features/${plan_basename}.md"
+
+    # Check if the pipeline manager already created the docs
+    if [ -f "$feature_doc" ]; then
+        log_ok "Feature documentation exists: ${feature_doc}"
+        return
+    fi
+
+    log_warn "Feature documentation missing: ${feature_doc}"
+    log_step "Spawning dedicated documentation agent..."
+
+    # Create docs directory if needed
+    mkdir -p docs/features docs/categories
+
+    claude -p "Read the agent prompt at ${SHARED_AGENTS_DIR}/pipeline-manager.md — specifically the 'Step 4: Feature Documentation Update' section.
+
+The pipeline completed all phases but SKIPPED the documentation step. You must now create the feature documentation.
+
+PLAN FILE: ${plan_file}
+Read the plan file to understand the feature, phases, and what was built.
+
+PLAN NUMBER: ${plan_number}
+PLAN BASENAME: ${plan_basename}
+
+YOUR TASK — Create/update THREE documentation files:
+
+1. docs/features/${plan_basename}.md — Per-feature documentation (read existing feature docs in docs/features/ for format reference)
+2. docs/categories/{category}.md — Update the appropriate category file (read existing ones in docs/categories/)
+3. docs/INDEX.md — Regenerate the full index (read ALL files in docs/features/ and docs/categories/)
+
+IMPORTANT:
+- Read existing docs/features/ files to match the format exactly
+- Read the plan JSON to extract phase names, file lists, and what was built
+- Scan the codebase (src/app/api/, src/lib/, tests/) to verify what files exist
+- Do NOT invent files that don't exist — verify before listing
+
+Begin now." \
+        --tools "Bash,Edit,Read,Write,Glob,Grep" \
+        ${PERMISSION_FLAG} \
+        2>&1 | tee "${LOGS_DIR}/docs-verification.log" || true
+
+    # Final check
+    if [ -f "$feature_doc" ]; then
+        log_ok "Feature documentation created: ${feature_doc}"
+
+        # Commit the docs
+        git add docs/
+        git commit -m "docs: add feature documentation for ${plan_basename}" || true
+    else
+        log_error "Feature documentation still missing after dedicated run: ${feature_doc}"
+    fi
+}
+
+# ============================================================================
 # Utility: List all plans
 # ============================================================================
 list_plans() {
@@ -506,6 +577,12 @@ main() {
 
     # Step 2: Run the full pipeline
     run_pipeline "$resume_mode"
+
+    # Step 3: Verify and enforce feature documentation
+    # The pipeline manager should create docs in its Step 4, but if it runs out
+    # of context (common with large plans), this safety net catches it and spawns
+    # a dedicated documentation session.
+    verify_and_create_docs "$PLAN_FILE"
 
     # Done
     echo ""
